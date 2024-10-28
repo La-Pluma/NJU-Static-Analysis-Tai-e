@@ -53,6 +53,11 @@ public class LiveVarTest {
     }
 
     @Test
+    public void ArrayDef() {
+        testLV("ArrayDef");
+    }
+
+    @Test
     public void Fibonacci() {
         testLV("Fibonacci");
     }

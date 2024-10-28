@@ -48,3 +48,4 @@ public abstract class DefinitionStmt<L extends LValue, R extends RValue>
      */
     public abstract R getRValue();
 }
+

@@ -1,0 +1,25 @@
+-------------------- <ArrayDef: void <init>()> (livevar) --------------------
+[0@L3] invokespecial %this.<java.lang.Object: void <init>()>(); []
+[1@L3] return; []
+
+-------------------- <ArrayDef: int sum(int[])> (livevar) --------------------
+[0@L6] temp$0 = arr.length; [arr, temp$0]
+[1@L6] copy = newarray int[temp$0]; [arr, copy]
+[2@L7] result = 0; [arr, copy, result]
+[3@L8] i = 0; [arr, copy, i, result]
+[4@L8] nop; [arr, copy, i, result]
+[5@L8] temp$1 = arr.length; [arr, copy, i, result, temp$1]
+[6@L8] if (i < temp$1) goto 8; [arr, copy, i, result]
+[7@L8] goto 17; [result]
+[8@L8] nop; [arr, copy, i, result]
+[9@L9] temp$6 = arr[i]; [arr, copy, i, result, temp$6]
+[10@L9] copy[i] = temp$6; [arr, copy, i, result]
+[11@L10] temp$10 = arr[i]; [arr, copy, i, result, temp$10]
+[12@L10] result = result + temp$10; [arr, copy, i, result]
+[13@L10] nop; [arr, copy, i, result]
+[14@L8] %intconst0 = 1; [%intconst0, arr, copy, i, result]
+[15@L8] i = i + %intconst0; [arr, copy, i, result]
+[16@L8] goto 4; [arr, copy, i, result]
+[17@L8] nop; [result]
+[18@L12] return result; []
+

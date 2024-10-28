@@ -238,6 +238,7 @@ public class ConstantPropagation extends
                                 return Value.makeConstant(left_value >= right_value ? 1 : 0);
                             }
                         }
+
                     } else if (binary_exp instanceof ShiftExp shift_exp) {
                         ShiftExp.Op op = shift_exp.getOperator();
                         switch (op) {
