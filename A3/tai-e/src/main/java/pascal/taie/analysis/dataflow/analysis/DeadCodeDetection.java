@@ -33,13 +33,7 @@ import pascal.taie.analysis.graph.cfg.CFGBuilder;
 import pascal.taie.analysis.graph.cfg.Edge;
 import pascal.taie.config.AnalysisConfig;
 import pascal.taie.ir.IR;
-import pascal.taie.ir.exp.ArithmeticExp;
-import pascal.taie.ir.exp.ArrayAccess;
-import pascal.taie.ir.exp.CastExp;
-import pascal.taie.ir.exp.FieldAccess;
-import pascal.taie.ir.exp.NewExp;
-import pascal.taie.ir.exp.RValue;
-import pascal.taie.ir.exp.Var;
+import pascal.taie.ir.exp.*;
 import pascal.taie.ir.stmt.AssignStmt;
 import pascal.taie.ir.stmt.If;
 import pascal.taie.ir.stmt.Stmt;
@@ -48,6 +42,9 @@ import pascal.taie.ir.stmt.SwitchStmt;
 import java.util.Comparator;
 import java.util.Set;
 import java.util.TreeSet;
+
+import java.util.Queue;
+import java.util.LinkedList;
 
 public class DeadCodeDetection extends MethodAnalysis {
 
@@ -71,6 +68,122 @@ public class DeadCodeDetection extends MethodAnalysis {
         Set<Stmt> deadCode = new TreeSet<>(Comparator.comparing(Stmt::getIndex));
         // TODO - finish me
         // Your task is to recognize dead code in ir and add it to deadCode
+
+        // to store traversed stmt
+        Set<Stmt> traversed = new TreeSet<>(Comparator.comparing(Stmt::getIndex));
+        // add all stmt to deadCode for initialization
+        deadCode.addAll(ir.getStmts());
+        // if stmt is not dead, remove it from deadCode
+        Queue<Stmt> worklist = new LinkedList<>();
+        worklist.add(cfg.getEntry());
+        while(!worklist.isEmpty()){
+            Stmt stmt = worklist.poll();
+            traversed.add(stmt);
+            if(stmt instanceof If if_stmt){
+                deadCode.remove(stmt);
+                ConditionExp condition = if_stmt.getCondition();
+                Value value = ConstantPropagation.evaluate(condition, constants.getInFact(stmt));
+                // value can not be Undefined
+                assert(value.isConstant() || value.isNAC());
+                if(value.isConstant()){
+                    // value only can be 0 or 1
+                    assert(value.getConstant() == 0 || value.getConstant() == 1);
+                    //tai-e ensure if_stmt has two edges -- IF_TRUE and IF_FALSE
+                    if(value.getConstant() == 1){
+                        for(Edge<Stmt> edge : cfg.getOutEdgesOf(if_stmt)){
+                            if(edge.getKind() == Edge.Kind.IF_TRUE){
+                                if(!worklist.contains(edge.getTarget()) && !traversed.contains(edge.getTarget())){
+                                    worklist.add(edge.getTarget());
+                                }
+                            }
+                        }
+                    }
+                    else if (value.getConstant() == 0){
+                        for(Edge<Stmt> edge : cfg.getOutEdgesOf(if_stmt)){
+                            if(edge.getKind() == Edge.Kind.IF_FALSE){
+                                if(!worklist.contains(edge.getTarget()) && !traversed.contains(edge.getTarget())){
+                                    worklist.add(edge.getTarget());
+                                }
+                            }
+                        }
+                    }
+                    else{
+                        assert false;
+                    }
+                }
+                else if(value.isNAC()){
+                    for(Stmt succ : cfg.getSuccsOf(stmt)){
+                        if(!worklist.contains(succ) && !traversed.contains(succ)){
+                            worklist.add(succ);
+                        }
+                    }
+//                    for(Stmt target : if_stmt.getTargets()){
+//                        if(!worklist.contains(target) && !traversed.contains(target)){
+//                            worklist.add(target);
+//                        }
+//                    }
+                }
+            }
+            else if(stmt instanceof SwitchStmt switch_stmt){
+                deadCode.remove(stmt);
+                Var var = switch_stmt.getVar();
+                Value value = constants.getInFact(stmt).get(var);
+                if(value.isConstant()) {
+                    boolean flag = false;
+                    for (Edge<Stmt> edge : cfg.getOutEdgesOf(switch_stmt)) {
+                        if (edge.isSwitchCase()) {
+                            if(edge.getCaseValue() == value.getConstant()){
+                                if(!worklist.contains(edge.getTarget()) && !traversed.contains(edge.getTarget())){
+                                    worklist.add(edge.getTarget());
+                                }
+                                flag = true;
+                                break;
+                            }
+                        }
+                    }
+                    if(!flag){
+                        Stmt default_target = switch_stmt.getDefaultTarget();
+                        if (!worklist.contains(default_target) && !traversed.contains(default_target)) {
+                            worklist.add(default_target);
+                        }
+                    }
+                }
+                else{
+                    for(Stmt succ : cfg.getSuccsOf(stmt)){
+                        if(!worklist.contains(succ) && !traversed.contains(succ)){
+                            worklist.add(succ);
+                        }
+                    }
+                }
+            }
+            else{
+                if(stmt instanceof AssignStmt<?,?> assign_stmt) {
+                    LValue lvalue = assign_stmt.getLValue();
+                    RValue rvalue = assign_stmt.getRValue();
+                    if(lvalue instanceof Var var){
+                        if(liveVars.getOutFact(stmt).contains(var)) {
+                            deadCode.remove(stmt);
+                        }
+                        if(!hasNoSideEffect(rvalue)) {
+                            deadCode.remove(stmt);
+                        }
+                    }
+                    else {
+                        // lvalue is not Var, we do not care
+                        deadCode.remove(stmt);
+                    }
+                }
+                else{
+                    // normal stmt
+                    deadCode.remove(stmt);
+                }
+                for (Stmt succ : cfg.getSuccsOf(stmt)) {
+                    if (!worklist.contains(succ) && !traversed.contains(succ)) {
+                        worklist.add(succ);
+                    }
+                }
+            }
+        }
         return deadCode;
     }
 
@@ -85,7 +198,7 @@ public class DeadCodeDetection extends MethodAnalysis {
                 // static field access may trigger class initialization
                 // instance field access may trigger NPE
                 rvalue instanceof FieldAccess ||
-                // array access may trigger NPE
+                // array access may trigger NPE(None Pointer Exception)
                 rvalue instanceof ArrayAccess) {
             return false;
         }
