@@ -130,7 +130,6 @@ class CHABuilder implements CGBuilder<Invoke, JMethod> {
                 return null;
             }
             return target;
-
         }
         return dispatch(jclass.getSuperClass(), subsignature);
     }

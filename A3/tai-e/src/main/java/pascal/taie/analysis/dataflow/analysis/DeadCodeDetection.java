@@ -72,6 +72,7 @@ public class DeadCodeDetection extends MethodAnalysis {
         // to store traversed stmt
         Set<Stmt> traversed = new TreeSet<>(Comparator.comparing(Stmt::getIndex));
         // add all stmt to deadCode for initialization
+        // SHOULD NOT USE cfg.getNodes(), Entry & Exit should not add in Dead Code init
         deadCode.addAll(ir.getStmts());
         // if stmt is not dead, remove it from deadCode
         Queue<Stmt> worklist = new LinkedList<>();
