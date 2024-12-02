@@ -266,7 +266,7 @@ class Solver {
             JMethod method = resolveCallee(recv, invoke);
             IR methodIR = method.getIR();
             Var thisVar = methodIR.getThis();
-            if(!invoke.isStatic()) {
+            if(thisVar != null) {
                 //means is not static
                 Pointer thisPointer = pointerFlowGraph.getVarPtr(thisVar);
                 workList.addEntry(thisPointer, new PointsToSet(recv));
