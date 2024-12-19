@@ -105,9 +105,10 @@ class Solver {
      */
     private void addReachable(CSMethod csMethod) {
         // TODO - finish me
+        StmtProcessor stmtProcessor = new StmtProcessor(csMethod);
         if(callGraph.addReachableMethod(csMethod)){
             for(Stmt stmt : csMethod.getMethod().getIR().getStmts()){
-                stmt.accept(new StmtProcessor(csMethod));
+                stmt.accept(stmtProcessor);
             }
         }
     }
@@ -128,7 +129,6 @@ class Solver {
 
         // TODO - if you choose to implement addReachable()
         //  via visitor pattern, then finish me
-
         @Override
         public Void visit(New stmt) {
             // x = new T
@@ -170,14 +170,14 @@ class Solver {
             return null;
         }
         @Override
-        public Void visit(Invoke stmt){
-            if(stmt.isStatic()) {
+        public Void visit(Invoke stmt) {
+            if (stmt.isStatic()) {
                 // l : r = T.m(a1, ..., an)
                 JMethod callee = resolveCallee(null, stmt);
-                Context ctContext = contextSelector.selectContext(csManager.getCSCallSite(context, stmt), callee);
-                CSMethod csCallee = csManager.getCSMethod(ctContext, callee);
                 CSCallSite csInvoke = csManager.getCSCallSite(context, stmt);
-                if (callGraph.addEdge(new Edge<>(CallKind.STATIC, csInvoke, csMethod))) {
+                Context ctContext = contextSelector.selectContext(csInvoke, callee);
+                CSMethod csCallee = csManager.getCSMethod(ctContext, callee);
+                if (callGraph.addEdge(new Edge<>(CallKind.STATIC, csInvoke, csCallee))) {
                     addReachable(csCallee);
                     for (int i = 0; i < callee.getParamCount(); i++) {
                         CSVar argPtr = csManager.getCSVar(context, stmt.getInvokeExp().getArg(i));
@@ -317,6 +317,7 @@ class Solver {
                         CSVar resultPtr = csManager.getCSVar(recv.getContext(), resultVar);
                         for(Var returnVar : callee.getIR().getReturnVars()){
                             CSVar returnPtr = csManager.getCSVar(context, returnVar);
+                            //CSVar resultPtr = csManager.getCSVar(recv.getContext(), resultVar);
                             addPFGEdge(returnPtr, resultPtr);
                         }
                     }
